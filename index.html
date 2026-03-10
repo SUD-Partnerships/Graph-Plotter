@@ -3,781 +3,230 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Graph Plotter</title>
-<style>
-  :root{
-    --bg: #0f1220;
-    --panel: #161a2b;
-    --text: #e6e9f2;
-    --muted: #9aa3b2;
-    --accent: #4f8cff;
-    --danger: #ff6b6b;
-    --grid: #22283d;
-    --axis: #96a0b5;
-    --chip: #25304a;
-  }
-  [data-theme="light"]{
-    --bg: #ffffff;
-    --panel: #f3f5f8;
-    --text: #0e1220;
-    --muted: #506078;
-    --accent: #2a66ff;
-    --danger: #c62f2f;
-    --grid: #e6eaf2;
-    --axis: #3a4560;
-    --chip: #e9eef8;
-  }
-  html,body{
-    height:100%; margin:0; background:var(--bg); color:var(--text);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji";
-  }
-  .app{
-    display:grid; grid-template-rows:auto 1fr; height:100%;
-  }
-  header{
-    display:flex; gap:12px; align-items:center; padding:10px 14px; background:var(--panel);
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-  }
-  header h1{
-    font-size:16px; margin:0; font-weight:600; letter-spacing:0.2px;
-  }
-  header .spacer{ flex:1; }
-  header .btn{
-    background:var(--chip); color:var(--text); border:1px solid transparent;
-    padding:7px 10px; border-radius:8px; cursor:pointer; font-size:13px;
-  }
-  header .btn:hover{ filter:brightness(1.05); }
-  header .btn.accent{ background:var(--accent); color:#fff; }
-  header .btn.danger{ background:var(--danger); color:#fff; }
-  header label{
-    display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted);
-  }
+<title>Graph Playground</title>
 
-  .layout{
-    display:grid; grid-template-columns:340px 1fr; min-height:0;
-  }
-  .left{
-    border-right:1px solid rgba(0,0,0,0.06);
-    background:var(--panel); padding:14px; overflow:auto;
-  }
-  .right{
-    position:relative; min-width:0; background:var(--bg);
-  }
-  .group{ margin-bottom:14px; }
-  .group h3{ margin:0 0 8px; font-size:13px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.8px; }
-  .row{ display:flex; gap:8px; flex-wrap:wrap; }
-  input[type="text"], input[type="number"], textarea, select{
-    width:100%; background: #0d1020; color:var(--text); border:1px solid #2a3250; border-radius:8px;
-    padding:9px 10px; font-size:14px; outline:none;
-  }
-  [data-theme="light"] input[type="text"], [data-theme="light"] input[type="number"], [data-theme="light"] textarea, [data-theme="light"] select{
-    background: #fff; border-color: #cfd6e6;
-  }
-  textarea{ min-height:70px; resize:vertical; }
-  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
-  .chip{
-    display:inline-flex; align-items:center; gap:6px; padding:6px 8px; border-radius:999px; background:var(--chip); font-size:12px;
-  }
-  .swatch{ width:10px; height:10px; border-radius:50%; display:inline-block; }
-  .hint{ font-size:12px; color:var(--muted); margin-top:6px; }
-  .tight .row > *{ flex:1; min-width:120px; }
+<link rel="stylesheet" href="styles.css" />
 
-  canvas{ display:block; width:100%; height:100%; }
-  .canvas-wrap{ position:absolute; inset:0; }
-  .overlay{
-    position:absolute; top:10px; left:10px; display:flex; gap:6px; flex-wrap:wrap;
-  }
-  .overlay .btn{ background: rgba(37,48,74,0.85); border:1px solid rgba(255,255,255,0.06); }
-  [data-theme="light"] .overlay .btn{ background: rgba(255,255,255,0.85); }
+<!-- Math.js -->
+<script src="https://cdn.jsdelivr.net/npm/mathjs@11.11.0/lib/browser/math.js"></script>
 
-  .status{
-    position:absolute; bottom:8px; left:10px; padding:6px 8px; border-radius:6px; font-size:12px;
-    background: rgba(0,0,0,0.35); color:#fff;
-  }
-  [data-theme="light"] .status{ background: rgba(0,0,0,0.2); }
-  .file-input{
-    display:flex; align-items:center; gap:8px;
-  }
-  .file-input input[type="file"]{ display:none; }
-  .file-input .btn{ padding:6px 10px; }
-  .legend{
-    display:flex; flex-direction:column; gap:6px;
-    background: var(--bg); border:1px dashed #2a3250; border-radius:10px; padding:8px;
-  }
-</style>
+<!-- Firebase (Modular SDK) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore.js"></script>
 </head>
 <body data-theme="dark">
-<div class="app">
-  <header>
-    <h1>Graph Plotter</h1>
+<div id="app">
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="brand">Graph Playground</div>
     <div class="spacer"></div>
-    <label>
-      Theme
-      <select id="theme">
-        <option value="dark" selected>Dark</option>
-        <option value="light">Light</option>
-      </select>
-    </label>
-    <button class="btn" id="exportPngBtn">Export PNG</button>
-    <button class="btn danger" id="resetBtn">Reset View</button>
+
+    <label class="small-muted">Theme</label>
+    <select id="themeSel">
+      <option value="dark" selected>Dark</option>
+      <option value="light">Light</option>
+    </select>
+
+    <div id="userArea" class="user-area"></div>
+    <button id="logoutBtn" class="btn danger small hidden">Logout</button>
   </header>
 
-  <div class="layout">
-    <div class="left">
-      <div class="group">
-        <h3>Functions</h3>
-        <input id="expr" type="text" placeholder="Enter f(x) e.g. sin(x), cos(x), x^2/10, exp(-x^2)" />
-        <div class="hint">Multiple functions: separate by comma. Use ^ for power, ln(x) for natural log.</div>
-        <div class="row" style="margin-top:6px;">
-          <button class="btn accent" id="plotBtn">Plot</button>
-          <button class="btn" id="addRandomBtn">Add Demo</button>
-          <button class="btn" id="clearBtn">Clear</button>
-        </div>
+  <!-- AUTH VIEW -->
+  <section id="authView" class="view">
+    <div class="card auth-card">
+      <div class="tabs">
+        <button class="tab active" data-tab="login">Login</button>
+        <button class="tab" data-tab="register">Register</button>
       </div>
 
-      <div class="group">
-        <h3>View & Sampling</h3>
-        <div class="row tight">
-          <div>
-            <label class="hint">X min</label>
-            <input type="number" id="xmin" step="any" value="-10">
-          </div>
-          <div>
-            <label class="hint">X max</label>
-            <input type="number" id="xmax" step="any" value="10">
-          </div>
-          <div>
-            <label class="hint">Y min</label>
-            <input type="number" id="ymin" step="any" value="-6">
-          </div>
-          <div>
-            <label class="hint">Y max</label>
-            <input type="number" id="ymax" step="any" value="6">
-          </div>
-          <div>
-            <label class="hint">Samples</label>
-            <input type="number" id="samples" value="1000" min="100" max="20000" step="100">
-          </div>
-          <div>
-            <label class="hint">Thickness</label>
-            <input type="number" id="thickness" value="2" min="1" max="6">
-          </div>
-        </div>
-        <div class="row" style="margin-top:8px;">
-          <button class="btn" id="fitBtn">Fit to Functions</button>
-          <button class="btn" id="zoomInBtn">Zoom In</button>
-          <button class="btn" id="zoomOutBtn">Zoom Out</button>
-        </div>
+      <div id="tab-login" class="tab-content active">
+        <input id="loginEmail" type="email" placeholder="Email" />
+        <input id="loginPassword" type="password" placeholder="Password" />
+        <button id="loginBtn" class="btn accent full">Log In</button>
+        <div id="loginMsg" class="msg"></div>
       </div>
 
-      <div class="group">
-        <h3>Points (CSV)</h3>
-        <div class="file-input">
-          <label class="btn" for="csvFile">Upload CSV</label>
-          <input id="csvFile" type="file" accept=".csv,text/csv" />
-          <button class="btn" id="clearPointsBtn">Clear Points</button>
-        </div>
-        <div class="hint">CSV format: each line as <code>x,y</code>. Example:<br/>-3,9<br/>-1,1<br/>0,0<br/>1,1<br/>2,4</div>
-      </div>
-
-      <div class="group">
-        <h3>Legend</h3>
-        <div id="legend" class="legend"></div>
-      </div>
-
-      <div class="group">
-        <h3>Tips</h3>
-        <ul class="hint">
-          <li>Pan: drag on canvas</li>
-          <li>Zoom: mouse wheel or buttons</li>
-          <li>Crosshair follows your cursor; status bar shows (x, y)</li>
-          <li>Functions allowed: sin, cos, tan, asin, acos, atan, sqrt, abs, log, ln, exp, pow, PI, E</li>
-        </ul>
+      <div id="tab-register" class="tab-content">
+        <input id="regName" type="text" placeholder="Full name" />
+        <input id="regEmail" type="email" placeholder="Email" />
+        <input id="regPassword" type="password" placeholder="Password (min 6)" />
+        <button id="registerBtn" class="btn accent full">Create Account</button>
+        <div id="registerMsg" class="msg"></div>
       </div>
     </div>
+  </section>
 
-    <div class="right">
-      <div class="canvas-wrap">
-        <canvas id="c"></canvas>
+  <!-- DASHBOARD -->
+  <section id="dashboardView" class="view hidden">
+    <div class="toolbar">
+      <button id="newPlaygroundBtn" class="btn accent">New Playground</button>
+    </div>
+
+    <div class="columns">
+      <div class="col">
+        <h3>My Playgrounds</h3>
+        <div id="myList" class="list"></div>
+      </div>
+
+      <div class="col">
+        <h3>Shared With Me</h3>
+        <div id="sharedList" class="list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EDITOR -->
+  <section id="editorView" class="view hidden">
+    <div class="editor-layout">
+
+      <!-- LEFT SIDEBAR -->
+      <aside class="left">
+
+        <div class="group">
+          <div class="row spread">
+            <input id="pgName" class="title-input" />
+            <div class="row">
+              <button id="saveBtn" class="btn small">Save</button>
+              <button id="exportPngBtn" class="btn small">Export</button>
+              <button id="backBtn" class="btn small">Back</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Layer Panel -->
+        <div class="group">
+          <h4>Add Layer</h4>
+
+          <div class="tabs small">
+            <button class="tab small active" data-tab="explicit">Explicit</button>
+            <button class="tab small" data-tab="parametric">Parametric</button>
+            <button class="tab small" data-tab="polar">Polar</button>
+            <button class="tab small" data-tab="implicit">Implicit</button>
+            <button class="tab small" data-tab="inequality">Inequality</button>
+            <button class="tab small" data-tab="points">Points</button>
+          </div>
+
+          <!-- EXPLICIT -->
+          <div id="panel-explicit" class="panel active">
+            <div class="palette">
+              <div class="label">Functions</div>
+              <div class="chips" id="fnPalette"></div>
+            </div>
+            <input id="exprInput" type="text" placeholder="e.g. sin(x) + cos(2x)/2" />
+            <div class="row tight">
+              <label>Domain Xmin <input id="exXmin" type="number" step="any" value="-10"></label>
+              <label>Xmax <input id="exXmax" type="number" step="any" value="10"></label>
+              <label>Samples <input id="exSamples" type="number" min="200" max="20000" value="1200"></label>
+            </div>
+            <button id="addExplicitBtn" class="btn accent">Add</button>
+          </div>
+
+          <!-- PARAMETRIC -->
+          <div id="panel-parametric" class="panel">
+            <input id="pxInput" type="text" placeholder="x(t) e.g. (2+cos(5t))*cos(t)" />
+            <input id="pyInput" type="text" placeholder="y(t) e.g. (2+cos(5t))*sin(t)" />
+            <div class="row tight">
+              <label>t min <input id="ptMin" type="number" step="any" value="0"></label>
+              <label>t max <input id="ptMax" type="number" step="any" value="6.28318"></label>
+              <label>Samples <input id="ptSamples" type="number" min="200" max="20000" value="2000"></label>
+            </div>
+            <button id="addParamBtn" class="btn accent">Add</button>
+          </div>
+
+          <!-- POLAR -->
+          <div id="panel-polar" class="panel">
+            <input id="prInput" type="text" placeholder="r(θ) e.g. 2*sin(5*theta)" />
+            <div class="row tight">
+              <label>θ min <input id="poMin" type="number" step="any" value="0"></label>
+              <label>θ max <input id="poMax" type="number" step="any" value="6.28318"></label>
+              <label>Samples <input id="poSamples" type="number" min="200" max="20000" value="2000"></label>
+            </div>
+            <button id="addPolarBtn" class="btn accent">Add</button>
+          </div>
+
+          <!-- IMPLICIT -->
+          <div id="panel-implicit" class="panel">
+            <input id="imInput" type="text" placeholder="F(x,y)=0 e.g. x^2 + y^2 - 9" />
+            <div class="row tight">
+              <label>Grid <input id="imGrid" type="number" min="50" max="600" value="200"></label>
+              <label>Stroke <input id="imStroke" type="number" min="1" max="4" value="2"></label>
+            </div>
+            <button id="addImplicitBtn" class="btn accent">Add</button>
+          </div>
+
+          <!-- INEQUALITY -->
+          <div id="panel-inequality" class="panel">
+            <input id="iqInput" type="text" placeholder="g(x) OR F(x,y) <= 0 (e.g., y <= sin(x) OR x^2 + y^2 - 4 <= 0)" />
+            <div class="row tight">
+              <label>Grid <input id="iqGrid" type="number" min="50" max="600" value="160"></label>
+              <label>Opacity <input id="iqAlpha" type="number" min="0.05" max="1" step="0.05" value="0.25"></label>
+            </div>
+            <button id="addIneqBtn" class="btn accent">Add</button>
+          </div>
+
+          <!-- POINTS -->
+          <div id="panel-points" class="panel">
+            <textarea id="ptsInput" placeholder="CSV x,y per line"></textarea>
+            <button id="addPointsBtn" class="btn accent">Add points</button>
+          </div>
+        </div>
+
+        <!-- Layers -->
+        <div class="group">
+          <h4>Layers</h4>
+          <div id="layers" class="layers"></div>
+        </div>
+
+        <!-- View -->
+        <div class="group">
+          <h4>View</h4>
+          <div class="row tight">
+            <label>Xmin <input id="xmin" type="number" step="any" value="-10"></label>
+            <label>Xmax <input id="xmax" type="number" step="any" value="10"></label>
+            <label>Ymin <input id="ymin" type="number" step="any" value="-6"></label>
+            <label>Ymax <input id="ymax" type="number" step="any" value="6"></label>
+          </div>
+          <div class="row">
+            <button id="fitBtn" class="btn small">Fit</button>
+            <button id="resetViewBtn" class="btn small">Reset</button>
+            <button id="toggleGridBtn" class="btn small">Grid</button>
+            <button id="toggleTicksBtn" class="btn small">Ticks</button>
+            <button id="toggleCrosshairBtn" class="btn small">Crosshair</button>
+          </div>
+        </div>
+
+        <!-- Share -->
+        <div class="group">
+          <h4>Share</h4>
+          <div class="row">
+            <input id="inviteEmail" type="email" placeholder="Invite by email" />
+            <button id="inviteBtn" class="btn small">Invite</button>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- CANVAS AREA -->
+      <main class="right">
+        <div class="canvas-wrap">
+          <canvas id="canvas"></canvas>
+          <div id="status" class="status">Ready</div>
+        </div>
+
         <div class="overlay">
-          <button class="btn" id="toggleGridBtn">Toggle Grid</button>
-          <button class="btn" id="toggleTicksBtn">Toggle Ticks</button>
-          <button class="btn" id="toggleCrosshairBtn">Crosshair</button>
+          <button id="zoomInBtn" class="btn small">+</button>
+          <button id="zoomOutBtn" class="btn small">−</button>
         </div>
-        <div class="status" id="status">Ready</div>
-      </div>
+      </main>
+
     </div>
-  </div>
+  </section>
+
 </div>
 
-<script>
-(function(){
-  // ---------- Utility: Colors ----------
-  const COLORS = [
-    "#4f8cff","#ff6b6b","#22c55e","#f59e0b","#a78bfa","#14b8a6",
-    "#ef4444","#eab308","#06b6d4","#fb7185","#94a3b8","#f97316"
-  ];
-  function pickColor(i){ return COLORS[i % COLORS.length]; }
-
-  // ---------- DOM ----------
-  const canvas = document.getElementById('c');
-  const statusEl = document.getElementById('status');
-  const legendEl = document.getElementById('legend');
-
-  const exprInput = document.getElementById('expr');
-  const plotBtn = document.getElementById('plotBtn');
-  const addRandomBtn = document.getElementById('addRandomBtn');
-  const clearBtn = document.getElementById('clearBtn');
-
-  const xminEl = document.getElementById('xmin');
-  const xmaxEl = document.getElementById('xmax');
-  const yminEl = document.getElementById('ymin');
-  const ymaxEl = document.getElementById('ymax');
-  const samplesEl = document.getElementById('samples');
-  const thicknessEl = document.getElementById('thickness');
-
-  const fitBtn = document.getElementById('fitBtn');
-  const zoomInBtn = document.getElementById('zoomInBtn');
-  const zoomOutBtn = document.getElementById('zoomOutBtn');
-
-  const csvFileEl = document.getElementById('csvFile');
-  const clearPointsBtn = document.getElementById('clearPointsBtn');
-
-  const toggleGridBtn = document.getElementById('toggleGridBtn');
-  const toggleTicksBtn = document.getElementById('toggleTicksBtn');
-  const toggleCrosshairBtn = document.getElementById('toggleCrosshairBtn');
-
-  const themeSel = document.getElementById('theme');
-  const exportPngBtn = document.getElementById('exportPngBtn');
-  const resetBtn = document.getElementById('resetBtn');
-
-  // ---------- Canvas & Coordinate System ----------
-  let dpr = window.devicePixelRatio || 1;
-  let ctx = canvas.getContext('2d');
-
-  const state = {
-    grid:true, ticks:true, crosshair:true,
-    xmin:-10, xmax:10, ymin:-6, ymax:6,
-    functions: [],
-    points: [],
-    samples: 1000,
-    thickness: 2,
-    dragging: false,
-    dragStart: null,
-    lastMouse: {x:0, y:0}
-  };
-
-  function setStatus(msg){ statusEl.textContent = msg; }
-
-  function resize(){
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.scale(dpr, dpr);
-    draw();
-  }
-  window.addEventListener('resize', resize);
-  resize();
-
-  // World→Screen and Screen→World
-  function worldToScreen(x, y){
-    const rect = canvas.getBoundingClientRect();
-    const w = rect.width, h = rect.height;
-    const sx = (x - state.xmin)/(state.xmax-state.xmin) * w;
-    const sy = h - (y - state.ymin)/(state.ymax-state.ymin) * h;
-    return {x:sx, y:sy};
-  }
-  function screenToWorld(sx, sy){
-    const rect = canvas.getBoundingClientRect();
-    const w = rect.width, h = rect.height;
-    const x = state.xmin + (sx / w) * (state.xmax - state.xmin);
-    const y = state.ymin + ((h - sy) / h) * (state.ymax - state.ymin);
-    return {x,y};
-  }
-
-  // ---------- Expression Parsing ----------
-  // We provide a safe-ish parser that maps allowed tokens to Math.*.
-  // Replaces ^ with ** and ln(...) with Math.log(...), constants, etc.
-  const SAFE_FUNCS = [
-    'sin','cos','tan','asin','acos','atan','sqrt','abs','log','exp','pow','min','max','floor','ceil','round'
-  ];
-  function prepareExpression(expr){
-    let e = expr.trim();
-    if(!e) return '';
-    // Replace power ^ with **
-    e = e.replace(/\^/g, '**');
-    // ln(x) -> Math.log(x)
-    e = e.replace(/\bln\s*\(/g, 'Math.log(');
-    // Functions -> Math.func
-    SAFE_FUNCS.forEach(fn=>{
-      const re = new RegExp('\\b'+fn+'\\s*\\(', 'g');
-      e = e.replace(re, `Math.${fn}(`);
-    });
-    // Constants -> Math.PI, Math.E
-    e = e.replace(/\bPI\b/g, 'Math.PI');
-    e = e.replace(/\bE\b/g, 'Math.E');
-    // Also allow "Math." if user typed it already.
-    // Replace implicit "x" safe usage remains.
-    return e;
-  }
-  function compileExpression(expr){
-    const code = prepareExpression(expr);
-    if(!code) throw new Error('Empty expression');
-    // Disallow forbidden keywords to mitigate eval risk
-    const forbidden = ['constructor','prototype','__proto__','window','document','self','globalThis','Function','import','await','fetch','XMLHttpRequest','while(','for(','new '];
-    for(const bad of forbidden){
-      if(code.includes(bad)) throw new Error('Unsupported syntax detected');
-    }
-    // Build a function f(x) with Math in scope
-    // eslint-disable-next-line no-new-func
-    const fn = new Function('x','with (Math) { return ('+code+'); }');
-    return (x)=> {
-      const v = fn(x);
-      if (typeof v !== 'number' || !isFinite(v)) return NaN;
-      return v;
-    };
-  }
-
-  // ---------- Plot Data ----------
-  function addFunction(rawExpr){
-    const fn = compileExpression(rawExpr);
-    const idx = state.functions.length;
-    state.functions.push({
-      id: 'f'+(Date.now())+'_'+idx,
-      expr: rawExpr,
-      color: pickColor(idx),
-      fn
-    });
-    updateLegend();
-    draw();
-  }
-
-  function removeFunction(id){
-    state.functions = state.functions.filter(f => f.id !== id);
-    updateLegend();
-    draw();
-  }
-
-  function updateLegend(){
-    legendEl.innerHTML = '';
-    if(state.functions.length === 0){
-      const p = document.createElement('div');
-      p.className = 'hint';
-      p.textContent = 'No functions yet. Try: sin(x), x^3/20, exp(-x^2)*sin(5x)';
-      legendEl.appendChild(p);
-      return;
-    }
-    state.functions.forEach((f, i)=>{
-      const row = document.createElement('div');
-      row.className = 'chip';
-      row.innerHTML = `
-        <span class="swatch" style="background:${f.color}"></span>
-        <span>f${i+1}(x) = ${f.expr}</span>
-        <button class="btn" data-id="${f.id}" style="padding:4px 6px; font-size:11px;">Remove</button>
-      `;
-      row.querySelector('button').addEventListener('click', ()=> removeFunction(f.id));
-      legendEl.appendChild(row);
-    });
-  }
-
-  // ---------- Drawing ----------
-  function niceStep(rangePx, pixelsPerUnit){
-    // Aim for tick each ~80px
-    const targetUnits = 80 / pixelsPerUnit;
-    const pow10 = Math.pow(10, Math.floor(Math.log10(targetUnits)));
-    const candidates = [1,2,5,10].map(m => m * pow10);
-    let best = candidates[0];
-    let bestDiff = Math.abs(candidates[0] - targetUnits);
-    for(const c of candidates){
-      const d = Math.abs(c - targetUnits);
-      if(d < bestDiff){ bestDiff = d; best = c; }
-    }
-    return best;
-  }
-
-  function drawGridAndAxes(){
-    const rect = canvas.getBoundingClientRect();
-    const w = rect.width, h = rect.height;
-    const {xmin,xmax,ymin,ymax} = state;
-
-    ctx.clearRect(0,0,w,h);
-
-    // Grid
-    if(state.grid){
-      ctx.save();
-      ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--grid');
-      ctx.lineWidth = 1;
-
-      // X grid
-      const pxPerX = w / (xmax - xmin);
-      const stepX = niceStep(w, pxPerX);
-      let x0 = Math.ceil(xmin / stepX) * stepX;
-      for(let x = x0; x <= xmax; x += stepX){
-        const {x:sx} = worldToScreen(x, 0);
-        ctx.beginPath();
-        ctx.moveTo(sx, 0);
-        ctx.lineTo(sx, h);
-        ctx.stroke();
-      }
-      // Y grid
-      const pxPerY = h / (ymax - ymin);
-      const stepY = niceStep(h, pxPerY);
-      let y0 = Math.ceil(ymin / stepY) * stepY;
-      for(let y = y0; y <= ymax; y += stepY){
-        const {y:sy} = worldToScreen(0, y);
-        ctx.beginPath();
-        ctx.moveTo(0, sy);
-        ctx.lineTo(w, sy);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    // Axes
-    ctx.save();
-    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--axis');
-    ctx.lineWidth = 1.5;
-
-    // y-axis at x=0
-    if(xmin < 0 && xmax > 0){
-      const {x:sx} = worldToScreen(0,0);
-      ctx.beginPath();
-      ctx.moveTo(sx, 0);
-      ctx.lineTo(sx, h);
-      ctx.stroke();
-    }
-    // x-axis at y=0
-    if(ymin < 0 && ymax > 0){
-      const {y:sy} = worldToScreen(0,0);
-      ctx.beginPath();
-      ctx.moveTo(0, sy);
-      ctx.lineTo(w, sy);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // Ticks & Labels
-    if(state.ticks){
-      ctx.save();
-      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--axis');
-      ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-
-      const pxPerX = w / (xmax - xmin);
-      const stepX = niceStep(w, pxPerX);
-      let x0 = Math.ceil(xmin / stepX) * stepX;
-      const yAxisY = Math.min(Math.max(worldToScreen(0, ymax).y, 0), h-14);
-      for(let x = x0; x <= xmax; x += stepX){
-        const {x:sx} = worldToScreen(x, 0);
-        ctx.fillText(formatTick(x), sx, yAxisY);
-      }
-
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      const pxPerY = h / (ymax - ymin);
-      const stepY = niceStep(h, pxPerY);
-      let y0 = Math.ceil(ymin / stepY) * stepY;
-      const xAxisX = Math.min(Math.max(worldToScreen(xmin, 0).x + 32, 32), w-4);
-      for(let y = y0; y <= ymax; y += stepY){
-        const {y:sy} = worldToScreen(0, y);
-        ctx.fillText(formatTick(y), xAxisX, sy);
-      }
-      ctx.restore();
-    }
-  }
-
-  function formatTick(v){
-    const a = Math.abs(v);
-    if (a === 0) return '0';
-    if (a >= 10000 || a < 0.001) return v.toExponential(1);
-    if (a < 1) return v.toFixed(2);
-    if (a < 10) return v.toFixed(1);
-    return v.toFixed(0);
-  }
-
-  function drawFunctions(){
-    const rect = canvas.getBoundingClientRect();
-    const w = rect.width, h = rect.height;
-    const {xmin,xmax,ymin,ymax,samples,thickness} = state;
-
-    state.functions.forEach((f, idx)=>{
-      ctx.save();
-      ctx.strokeStyle = f.color;
-      ctx.lineWidth = thickness;
-      ctx.beginPath();
-
-      let first = true;
-      for(let i=0;i<=samples;i++){
-        const x = xmin + (i / samples) * (xmax - xmin);
-        let y = f.fn(x);
-        if(!isFinite(y)) { first = true; continue; }
-        const p = worldToScreen(x, y);
-        if(p.y < -10000 || p.y > h+10000){ first = true; continue; } // guard crazy values
-        if(first){ ctx.moveTo(p.x, p.y); first=false; }
-        else { ctx.lineTo(p.x, p.y); }
-      }
-      ctx.stroke();
-      ctx.restore();
-    });
-  }
-
-  function drawPoints(){
-    if(state.points.length === 0) return;
-    ctx.save();
-    ctx.fillStyle = '#ffd166';
-    const r = 3;
-    state.points.forEach(pt=>{
-      const p = worldToScreen(pt.x, pt.y);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI*2);
-      ctx.fill();
-    });
-    ctx.restore();
-  }
-
-  function drawCrosshair(){
-    if(!state.crosshair) return;
-    const rect = canvas.getBoundingClientRect();
-    const w = rect.width, h = rect.height;
-    const {x,y} = state.lastMouse;
-    if(x < 0 || y < 0 || x > w || y > h) return;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    if(document.body.getAttribute('data-theme') === 'light'){
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    }
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5,5]);
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function draw(){
-    drawGridAndAxes();
-    drawFunctions();
-    drawPoints();
-    drawCrosshair();
-  }
-
-  // ---------- Mouse: Pan, Crosshair, Wheel Zoom ----------
-  canvas.addEventListener('mousedown', (e)=>{
-    state.dragging = true;
-    state.dragStart = {x:e.clientX, y:e.clientY};
-    canvas.style.cursor = 'grabbing';
-  });
-  window.addEventListener('mouseup', ()=>{
-    state.dragging = false;
-    canvas.style.cursor = 'default';
-  });
-  window.addEventListener('mousemove', (e)=>{
-    const rect = canvas.getBoundingClientRect();
-    state.lastMouse = {x: e.clientX - rect.left, y: e.clientY - rect.top};
-    if(state.crosshair){
-      const wpt = screenToWorld(state.lastMouse.x, state.lastMouse.y);
-      setStatus(`x=${wpt.x.toFixed(4)}  y=${wpt.y.toFixed(4)}`);
-    }
-    if(!state.dragging) { draw(); return; }
-    // Pan
-    const dx = e.clientX - state.dragStart.x;
-    const dy = e.clientY - state.dragStart.y;
-    state.dragStart = {x:e.clientX, y:e.clientY};
-
-    const rectW = rect.width, rectH = rect.height;
-    const worldDx = -dx / rectW * (state.xmax - state.xmin);
-    const worldDy =  dy / rectH * (state.ymax - state.ymin);
-    state.xmin += worldDx; state.xmax += worldDx;
-    state.ymin += worldDy; state.ymax += worldDy;
-    syncInputsFromState();
-    draw();
-  });
-  canvas.addEventListener('wheel', (e)=>{
-    e.preventDefault();
-    const factor = (e.deltaY < 0) ? 0.9 : 1.1;
-    zoomAtPointer(factor, e);
-  }, {passive:false});
-
-  function zoomAtPointer(factor, e){
-    const rect = canvas.getBoundingClientRect();
-    const sx = (e.clientX - rect.left);
-    const sy = (e.clientY - rect.top);
-    const {x:wx, y:wy} = screenToWorld(sx, sy);
-
-    const zx = (state.xmax - state.xmin) * (1 - factor);
-    const zy = (state.ymax - state.ymin) * (1 - factor);
-
-    state.xmin = state.xmin + (wx - state.xmin) * (1 - factor);
-    state.xmax = state.xmax - (state.xmax - wx) * (1 - factor);
-    state.ymin = state.ymin + (wy - state.ymin) * (1 - factor);
-    state.ymax = state.ymax - (state.ymax - wy) * (1 - factor);
-
-    syncInputsFromState();
-    draw();
-  }
-
-  // ---------- Controls ----------
-  plotBtn.addEventListener('click', ()=>{
-    const raw = exprInput.value.trim();
-    if(!raw){ setStatus('Enter expression(s).'); return; }
-    const parts = raw.split(',').map(s=>s.trim()).filter(Boolean);
-    let added = 0;
-    parts.forEach(p=>{
-      try { addFunction(p); added++; }
-      catch(err){ console.warn(err); setStatus(`Error: ${err.message} in "${p}"`); }
-    });
-    if(added>0) setStatus(`Added ${added} function(s).`);
-  });
-
-  addRandomBtn.addEventListener('click', ()=>{
-    const demos = [
-      'sin(x)',
-      'cos(x)',
-      'tan(x)/4',
-      'x^2/10',
-      'exp(-x^2)',
-      'exp(-x^2)*sin(5x)',
-      'abs(x)',
-      'ln(x^2+1)',
-      '1/(1+x^2)',
-      'sin(x)+cos(2x)/2'
-    ];
-    const pick = demos[Math.floor(Math.random()*demos.length)];
-    exprInput.value = exprInput.value ? (exprInput.value + ', ' + pick) : pick;
-  });
-
-  clearBtn.addEventListener('click', ()=>{
-    state.functions = [];
-    updateLegend();
-    draw();
-    setStatus('Cleared all functions.');
-  });
-
-  function syncInputsFromState(){
-    xminEl.value = state.xmin.toFixed(6);
-    xmaxEl.value = state.xmax.toFixed(6);
-    yminEl.value = state.ymin.toFixed(6);
-    ymaxEl.value = state.ymax.toFixed(6);
-    samplesEl.value = state.samples;
-    thicknessEl.value = state.thickness;
-  }
-  function syncStateFromInputs(){
-    const xn = parseFloat(xminEl.value), xx = parseFloat(xmaxEl.value);
-    const yn = parseFloat(yminEl.value), yx = parseFloat(ymaxEl.value);
-    const sm = parseInt(samplesEl.value,10);
-    const th = parseInt(thicknessEl.value,10);
-    if(isFinite(xn) && isFinite(xx) && xn < xx){ state.xmin = xn; state.xmax = xx; }
-    if(isFinite(yn) && isFinite(yx) && yn < yx){ state.ymin = yn; state.ymax = yx; }
-    if(isFinite(sm) && sm >= 100 && sm <= 20000){ state.samples = sm; }
-    if(isFinite(th) && th >= 1 && th <= 6){ state.thickness = th; }
-  }
-
-  [xminEl,xmaxEl,yminEl,ymaxEl,samplesEl,thicknessEl].forEach(el=>{
-    el.addEventListener('change', ()=>{ syncStateFromInputs(); draw(); });
-  });
-
-  fitBtn.addEventListener('click', ()=>{
-    if(state.functions.length === 0){ setStatus('Nothing to fit.'); return; }
-    let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
-    const S = 1000;
-    state.functions.forEach(f=>{
-      for(let i=0;i<=S;i++){
-        const x = -10 + 20*(i/S);
-        const y = f.fn(x);
-        if(!isFinite(y)) continue;
-        xmin = Math.min(xmin, x); xmax = Math.max(xmax, x);
-        ymin = Math.min(ymin, y); ymax = Math.max(ymax, y);
-      }
-    });
-    if(!isFinite(xmin) || !isFinite(ymin)){
-      setStatus('Unable to fit (no finite values).');
-      return;
-    }
-    // pad a bit
-    const padX = (xmax - xmin) * 0.1 || 1;
-    const padY = (ymax - ymin) * 0.1 || 1;
-    state.xmin = xmin - padX; state.xmax = xmax + padX;
-    state.ymin = ymin - padY; state.ymax = ymax + padY;
-    syncInputsFromState();
-    draw();
-  });
-
-  zoomInBtn.addEventListener('click', ()=>{
-    // Zoom around center
-    const rect = canvas.getBoundingClientRect();
-    zoomAtPointer(0.85, {clientX: rect.left + rect.width/2, clientY: rect.top + rect.height/2});
-  });
-  zoomOutBtn.addEventListener('click', ()=>{
-    const rect = canvas.getBoundingClientRect();
-    zoomAtPointer(1.15, {clientX: rect.left + rect.width/2, clientY: rect.top + rect.height/2});
-  });
-
-  // CSV Points
-  csvFileEl.addEventListener('change', async ()=>{
-    const file = csvFileEl.files[0];
-    if(!file) return;
-    const text = await file.text();
-    const lines = text.split(/\r?\n/);
-    const pts = [];
-    for(const line of lines){
-      const s = line.trim();
-      if(!s) continue;
-      const parts = s.split(',').map(t=>t.trim());
-      if(parts.length < 2) continue;
-      const x = parseFloat(parts[0]);
-      const y = parseFloat(parts[1]);
-      if(isFinite(x) && isFinite(y)) pts.push({x,y});
-    }
-    state.points = pts;
-    draw();
-    setStatus(`Loaded ${pts.length} point(s).`);
-  });
-  clearPointsBtn.addEventListener('click', ()=>{
-    state.points = []; draw(); setStatus('Cleared points.');
-  });
-
-  // Toggles
-  toggleGridBtn.addEventListener('click', ()=>{ state.grid = !state.grid; draw(); });
-  toggleTicksBtn.addEventListener('click', ()=>{ state.ticks = !state.ticks; draw(); });
-  toggleCrosshairBtn.addEventListener('click', ()=>{ state.crosshair = !state.crosshair; draw(); });
-
-  // Theme
-  themeSel.addEventListener('change', ()=>{
-    document.body.setAttribute('data-theme', themeSel.value);
-    draw();
-  });
-
-  // Export
-  exportPngBtn.addEventListener('click', ()=>{
-    const link = document.createElement('a');
-    link.download = 'plot.png';
-    // We need the canvas with device pixels. We already scaled context; use toDataURL.
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  });
-
-  // Reset
-  resetBtn.addEventListener('click', ()=>{
-    Object.assign(state, {
-      grid:true, ticks:true, crosshair:true,
-      xmin:-10, xmax:10, ymin:-6, ymax:6,
-      samples:1000, thickness:2,
-    });
-    syncInputsFromState();
-    draw();
-  });
-
-  // Initial
-  syncInputsFromState();
-  updateLegend();
-  exprInput.value = 'sin(x), cos(x), x^2/10';
-  plotBtn.click();
-})();
-</script>
+<!-- App -->
+<script src="app.js"></script>
 </body>
 </html>
